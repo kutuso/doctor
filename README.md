@@ -140,6 +140,9 @@ repo.
 - The M2 roadmap item: `kutu-doctor` for live memory-health visibility (the
   PSI-driven `kutu-memoryd` policy daemon is the other half and stays on the
   OS side).
+- This repo is the source of truth; the OS distro packages a vendored copy
+  (`packages/kutu-doctor/` in kutuso/os). After changing this repo, run
+  `make vendor` and bump the package's `pkgrel` over there.
 - Reads and writes only files owned by the OS packages (`kutu-base`,
   `kutu-memory`) — nothing else on disk.
 - systemd remains the sole cgroup writer: live application goes through
