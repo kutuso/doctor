@@ -7,9 +7,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-latest_iso() { find "$1" -name 'kutu-os-*.iso' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-; }
+latest_iso() {
+  find "$1" -name 'kutu-os-*.iso' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2- || true
+}
 
-ISO="${KUTU_ISO:-$(latest_iso "../os/out")}"
+ISO="${KUTU_ISO:-${EXPECT_ISO:-$(latest_iso "../os/out")}}"
 [ -n "$ISO" ] || { echo "no kutu ISO found; set KUTU_ISO=... or build one in ../os (make build)"; exit 1; }
 ISO=$(readlink -f "$ISO")
 ISO_NAME=$(basename "$ISO")
