@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 def root() -> Path:
-    return Path(os.environ.get("KUTU_ROOT", ""))
+    return Path(os.environ.get("KUTU_ROOT") or "/")
 
 
 def sysfs() -> Path:

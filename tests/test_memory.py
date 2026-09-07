@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from kutu_doctor import memory
 
 
@@ -49,12 +51,21 @@ def test_user_slice_memory_high(fake_stack):
     assert memory.user_slice_memory_high() == 15118201733
 
 
-def test_missing_files_degrade_to_none(fake_stack, tmp_path):
-    fake_stack["sys"].rename(tmp_path / "gone")
-    (tmp_path / "sys").mkdir()
-    import os
-
-    os.environ["KUTU_SYSFS"] = str(tmp_path / "sys")
+def test_missing_files_degrade_to_none(fake_stack, tmp_path, monkeypatch):
+    monkeypatch.setenv("KUTU_SYSFS", str(tmp_path / "empty"))
+    (tmp_path / "empty").mkdir()
     assert memory.zswap_params().enabled is None
     assert memory.mglru().enabled is None
     assert memory.damon_state() is None
+
+
+def test_default_roots_are_absolute(monkeypatch):
+    monkeypatch.delenv("KUTU_ROOT", raising=False)
+    monkeypatch.delenv("KUTU_SYSFS", raising=False)
+    monkeypatch.delenv("KUTU_PROC", raising=False)
+    from kutu_doctor import paths
+
+    assert paths.root().is_absolute()
+    assert paths.etc() == Path("/etc")
+    assert paths.sysfs() == Path("/sys")
+    assert paths.proc() == Path("/proc")

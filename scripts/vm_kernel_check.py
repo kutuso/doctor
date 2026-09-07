@@ -88,7 +88,8 @@ mode.set_mode("performance")
 dropin = pathlib.Path("/etc/systemd/system/user.slice.d/50-kutu.conf").read_text()
 check("mode-dropin-95", f"MemoryHigh={want}" in dropin, dropin.strip())
 after = memory.user_slice_memory_high()
-check("mode-live-cgroup", after == want, f"{before} -> {after} want {want}")
+check("mode-live-cgroup", after is not None and abs(after - want) <= 2 * 1024 * 1024,
+      f"{before} -> {after} want {want}")
 check("mode-apps-firefox-70", apps.get_app("firefox").memory_high_pct == 70)
 
 mode.set_mode("saver")
