@@ -42,7 +42,7 @@ set timeout 1800
 log_file -noappend $env(SMOKE_LOG)
 spawn qemu-system-x86_64 -m 2048 -display none -serial mon:stdio -nographic \
   {*}$env(KVM_ARGS) \
-  -virtfs local,path=$env(REPO),mount_tag=host0,security_model=none,rw=on \
+  -virtfs local,path=$env(REPO),mount_tag=host0,security_model=none \
   -cdrom $env(EXPECT_ISO) -boot d
 expect {
   -re {\]# $} {}
