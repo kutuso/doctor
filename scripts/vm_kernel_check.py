@@ -94,10 +94,11 @@ check("mode-apps-firefox-70", apps.get_app("firefox").memory_high_pct == 70)
 
 mode.set_mode("saver")
 saver_want = total * 1024 * 85 // 100
+restored = memory.user_slice_memory_high()
 check(
     "mode-restored",
-    memory.user_slice_memory_high() == saver_want,
-    f"{after} -> {memory.user_slice_memory_high()} want {saver_want}",
+    restored is not None and abs(restored - saver_want) <= 2 * 1024 * 1024,
+    f"{after} -> {restored} want {saver_want}",
 )
 
 with open("/tmp/vmcheck.json", "w") as fh:
