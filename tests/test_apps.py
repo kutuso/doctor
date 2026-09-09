@@ -46,3 +46,11 @@ def test_scope_command_sanitizes_profile_names(fake_stack):
 
 def test_get_app_missing(fake_stack):
     assert apps.get_app("nope") is None
+
+
+def test_profile_names_reject_traversal(fake_stack):
+    assert apps.get_app("../evil") is None
+    assert apps.get_app("sub/dir") is None
+    assert apps.get_app("") is None
+    assert apps.get_app(".hidden") is None
+    assert apps.valid_profile_name("firefox-11.x_2") is True

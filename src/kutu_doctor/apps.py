@@ -53,7 +53,13 @@ def list_apps() -> list[AppProfile]:
     return [_parse(conf) for conf in sorted(apps.glob("*.conf"))]
 
 
+def valid_profile_name(name: str) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name))
+
+
 def get_app(name: str) -> AppProfile | None:
+    if not valid_profile_name(name):
+        return None
     conf = paths.apps_dir() / f"{name}.conf"
     return _parse(conf) if conf.is_file() else None
 

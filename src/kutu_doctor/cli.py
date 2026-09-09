@@ -142,7 +142,12 @@ def mode_set(
         raise SystemExit(2)
     if live:
         system.require_root(f"mode set {name}")
-    mode_mod.set_mode(name, apply_live=live)
+    try:
+        mode_mod.set_mode(name, apply_live=live)
+    except system.RunError as error:
+        err_console.print(f"kutu-doctor: applying the mode failed: {error}")
+        err_console.print("the config was persisted; run 'kutu-doctor mode apply' after fixing")
+        raise SystemExit(1) from error
     mode_info = mode_mod.MODES[name]
     console.print(
         f"[{render.R4}]mode set:[/] [{render.R6}]{name}[/] "
@@ -162,7 +167,11 @@ def mode_apply() -> None:
         root = os.environ.get("KUTU_ROOT", "")
         err_console.print(f"kutu-doctor: no valid MODE in {root}/etc/kutu/memory.conf")
         raise SystemExit(2)
-    applied_now = mode_mod.apply_mode(mode_mod.MODES[current])
+    try:
+        applied_now = mode_mod.apply_mode(mode_mod.MODES[current])
+    except system.RunError as error:
+        err_console.print(f"kutu-doctor: mode apply failed: {error}")
+        raise SystemExit(1) from error
     for unit, value in applied_now.items():
         console.print(f"[{render.R4}]applied[/] {unit}: MemoryHigh={render.human_bytes(value)}")
 
