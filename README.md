@@ -64,8 +64,8 @@ else it's a plain Python package with two runtime dependencies — any Linux
 distro with Python ≥ 3.10 works:
 
 ```sh
-pipx install kutu-doctor        # from PyPI (after the first tagged release)
-pipx install git+https://github.com/kutuso/doctor.git
+pipx install kutu-doctor        # from PyPI
+pipx install git+https://github.com/kutuso/doctor.git   # bleeding edge
 ```
 
 (Debian/Ubuntu/Fedora: `pipx` via your package manager or pip; the package
