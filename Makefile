@@ -14,7 +14,7 @@ vmtest:
 	bash scripts/vmtest.sh
 
 vendor:
-	rsync -a --delete --exclude __pycache__ src/kutu_doctor/ ../os/packages/kutu-doctor/src/kutu_doctor/
+	rsync -a --delete --exclude __pycache__ src/kutu_doctor/ ../os/packages/kutu-doctor/kutu_doctor/
 
 install:
 	pipx install -e .
