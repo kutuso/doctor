@@ -59,15 +59,37 @@ untouched.
 
 ## Install
 
-On kutu OS it is intended to ship as a package. Anywhere else (any Arch-ish
-Linux, or a venv on your distro of choice):
+On kutu OS it ships as the `kutu-doctor` package (preinstalled). Everywhere
+else it's a plain Python package with two runtime dependencies — any Linux
+distro with Python ≥ 3.10 works:
 
 ```sh
+pipx install kutu-doctor        # from PyPI (after the first tagged release)
 pipx install git+https://github.com/kutuso/doctor.git
 ```
 
-Runtime dependencies are just `typer` and `rich` (both in the Arch repos as
-`python-typer` / `python-rich`; Python ≥ 3.10).
+(Debian/Ubuntu/Fedora: `pipx` via your package manager or pip; the package
+itself is pure Python — no compilation, no distro-specific code.)
+
+### Running on non-kutu distros
+
+Nothing is hardcoded to kutu OS or Arch:
+
+- Reads only `/proc` and `/sys` (meminfo, PSI, zswap, MGLRU, DAMON,
+  cgroups) — present on any modern mainline kernel regardless of distro.
+- `systemctl` calls are for status checks and mode application; on non-
+  systemd systems the service probes degrade to `?` and everything else
+  still works.
+- Without the kutu packages installed: the **dashboard and `status` show
+  the kernel-side stack**, `check` tells you exactly what's absent with fix
+  hints, `mode set` errors cleanly (no `/etc/kutu` to calibrate), and
+  `reset` points you at the kutu repository. Mode switching becomes useful
+  as soon as `kutu-memory`/`kutu-base` are installed — on Arch or an
+  Arch-derivative that's one pacman.conf stanza away.
+
+That's also why distro coupling was never a problem: kutu OS *vendors* this
+repo as a package, but the tool itself only reads standard kernel
+interfaces and writes files the kutu packages document.
 
 ## Environment overrides
 
@@ -134,6 +156,15 @@ The VM is disposable, so kernel-state mutation is the point, not a hazard.
 CI runs only the unit suite (there is no published ISO artifact yet);
 `make vmtest` is the pre-release gate, exactly like `make smoke` in the OS
 repo.
+
+## Releases
+
+Tags `vX.Y.Z` build an sdist + wheel and publish to PyPI via
+[trusted publishing](https://docs.pypi.org/trusted-publishers/) (workflow:
+`.github/workflows/pypi.yml`). One-time maintainer setup: register the
+`kutu-doctor` project on PyPI with publisher `kutuso/doctor`, workflow
+`pypi.yml`, environment `pypi` — after that every tag publishes
+automatically.
 
 ## Relationship to kutu OS
 
