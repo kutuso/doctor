@@ -98,12 +98,16 @@ also how the test suite fakes a whole machine:
 
 | Variable | Replaces | Used for |
 |---|---|---|
-| `KUTU_ROOT` | `/` (prefix for `/etc`) | inspect a target/chroot, tests |
+| `KUTU_ROOT` | `/` (prefix for `/etc`) | read-only inspection of a target/chroot; mutating commands refuse to run |
+| `KUTU_SANDBOX=1` | — | opt-in test sandbox (with `KUTU_ROOT`): enables the command stubs and skips the root check |
 | `KUTU_SYSFS` | `/sys` | fake sysfs trees |
 | `KUTU_PROC` | `/proc` | fake meminfo/PSI |
 | `KUTU_SYSTEMCTL` | `systemctl` | command stubs |
 | `KUTU_SYSTEMD_RUN` | `systemd-run` | command stubs |
 | `KUTU_DRY_RUN=1` | — | `apps run` prints the command instead of exec'ing |
+
+`check` exits 0 when everything passed, 1 when a check failed, and 2
+when checks could not be determined (no systemd, unreachable bus).
 
 ## Scripting
 

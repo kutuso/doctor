@@ -21,7 +21,7 @@ if [ "${KUTU_IN_DOCKER:-0}" != 1 ]; then
   KVM_FLAGS=()
   [ -w /dev/kvm ] && KVM_FLAGS=(--device /dev/kvm)
   exec docker run --rm "${KVM_FLAGS[@]+"${KVM_FLAGS[@]}"}" \
-    -v "$PWD:/cli" -v "$(dirname "$ISO"):/iso:ro" \
+    -v "$PWD:/cli:ro" -v "$(dirname "$ISO"):/iso:ro" \
     -w /cli -e KUTU_IN_DOCKER=1 -e EXPECT_ISO="/iso/$ISO_NAME" \
     archlinux:base-devel bash scripts/vmtest.sh
 fi
@@ -29,8 +29,7 @@ fi
 pacman -Sy --noconfirm --needed qemu-system-x86 qemu-system-x86-firmware expect >/dev/null 2>&1
 
 export REPO=/cli
-export SMOKE_LOG=/cli/vmtest.log
-mkdir -p /cli
+export SMOKE_LOG=/tmp/vmtest.log
 : > "$SMOKE_LOG"
 
 KVM_ARGS=""
@@ -42,7 +41,7 @@ set timeout 1800
 log_file -noappend $env(SMOKE_LOG)
 spawn qemu-system-x86_64 -m 2048 -display none -serial mon:stdio -nographic \
   {*}$env(KVM_ARGS) \
-  -virtfs local,path=$env(REPO),mount_tag=host0,security_model=none \
+  -virtfs local,path=$env(REPO),mount_tag=host0,security_model=none,readonly=on \
   -cdrom $env(EXPECT_ISO) -boot d
 expect {
   -re {\]# $} {}
