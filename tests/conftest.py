@@ -114,6 +114,7 @@ def fake_stack(tmp_path, monkeypatch):
     systemd_run.chmod(0o755)
 
     monkeypatch.setenv("KUTU_ROOT", str(tmp_path / "root"))
+    monkeypatch.setenv("KUTU_SANDBOX", "1")
     monkeypatch.setenv("KUTU_SYSFS", str(sysroot))
     monkeypatch.setenv("KUTU_PROC", str(procroot))
     monkeypatch.setenv("KUTU_SYSTEMCTL", str(systemctl))

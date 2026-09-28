@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json as jsonlib
 import os
-import shutil
-from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -38,6 +36,15 @@ console = Console()
 err_console = Console(stderr=True)
 
 MODE_ARGUMENT = typer.Argument(help="saver | balanced | performance")
+
+
+def _refuse_target_root(action: str) -> None:
+    if paths.is_target_root():
+        err_console.print(
+            f"kutu-doctor: {action} refuses to run against a KUTU_ROOT target; "
+            "KUTU_ROOT is for read-only inspection (tests use KUTU_SANDBOX=1)"
+        )
+        raise SystemExit(2)
 
 
 def _print_json(payload: dict) -> None:
@@ -140,8 +147,8 @@ def mode_set(
             f"kutu-doctor: unknown mode '{name}' (expected: {' | '.join(mode_mod.MODES)})"
         )
         raise SystemExit(2)
-    if live:
-        system.require_root(f"mode set {name}")
+    _refuse_target_root("mode set")
+    system.require_root(f"mode set {name}")
     try:
         mode_mod.set_mode(name, apply_live=live)
     except system.RunError as error:
@@ -161,6 +168,7 @@ def mode_set(
 @mode_app.command("apply")
 def mode_apply() -> None:
     """Re-apply the persisted mode's ceilings (idempotent)."""
+    _refuse_target_root("mode apply")
     system.require_root("mode apply")
     current = mode_mod.current_mode()
     if current not in mode_mod.MODES:
@@ -231,16 +239,22 @@ def reset(
     yes: bool = typer.Option(False, "--yes", "-y", help="skip the confirmation prompt"),
 ) -> None:
     """Return the memory stack to stock Arch behavior (runs kutu-reset)."""
-    binary = shutil.which("kutu-reset") or str(
-        Path(os.environ.get("KUTU_ROOT", "/")) / "usr/bin/kutu-reset"
-    )
+    if paths.is_sandboxed() or paths.is_target_root():
+        err_console.print(
+            "kutu-doctor: reset refuses to run against a KUTU_ROOT target; "
+            "kutu-reset operates on the live /etc, /sys and /boot, so run it "
+            "on the booted system"
+        )
+        raise SystemExit(2)
+    system.require_root("reset")
+    binary = "/usr/bin/kutu-reset"
     if not (os.path.isfile(binary) and os.access(binary, os.X_OK)):
         err_console.print(
             "kutu-doctor: kutu-reset not found — is kutu-memory installed? "
             "(https://kutuso.github.io/os/repo/x86_64/)"
         )
         raise SystemExit(1)
-    if not yes and not paths.is_sandboxed():
+    if not yes:
         apply_it = typer.confirm(
             "Revert all kutu memory tuning to stock Arch defaults and reboot later?"
         )

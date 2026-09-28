@@ -46,11 +46,11 @@ def service_active(name: str) -> bool | None:
 
 
 def require_root(action: str) -> None:
-    """Refuse mutating actions unless root; sandboxed (KUTU_ROOT) runs skip the check."""
+    """Refuse mutating actions unless root; the test sandbox skips the check."""
     import os
     import sys
 
-    if paths.is_sandboxed():
+    if paths.is_sandboxed() or paths.is_target_root():
         return
     if os.geteuid() != 0:
         print(f"kutu: {action} requires root (try: sudo kutu ...)", file=sys.stderr)

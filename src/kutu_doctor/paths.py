@@ -4,6 +4,9 @@ The environment variables mirror the conventions of the shell tools shipped in
 kutu OS (``kutu-check-kernel``, ``kutu-firstboot``, ``kutu-run``):
 
 - ``KUTU_ROOT``    prefix for ``/etc`` (target inspection, tests)
+- ``KUTU_SANDBOX`` must be ``1`` for the test sandbox: ``KUTU_ROOT``
+  alone means read-only target inspection and every mutating command
+  refuses to run
 - ``KUTU_SYSFS``   replacement for ``/sys``
 - ``KUTU_PROC``    replacement for ``/proc``
 - ``KUTU_SYSTEMCTL``     replacement ``systemctl`` command (tests: stub)
@@ -54,4 +57,8 @@ def systemd_run_cmd() -> list[str]:
 
 
 def is_sandboxed() -> bool:
-    return bool(os.environ.get("KUTU_ROOT"))
+    return bool(os.environ.get("KUTU_ROOT")) and os.environ.get("KUTU_SANDBOX") == "1"
+
+
+def is_target_root() -> bool:
+    return bool(os.environ.get("KUTU_ROOT")) and not is_sandboxed()

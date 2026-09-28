@@ -107,5 +107,20 @@ def _all_output(result) -> str:
 
 def test_reset_missing_binary(fake_stack):
     result = runner.invoke(app, ["reset", "--yes"])
-    assert result.exit_code == 1
-    assert "kutu-reset not found" in _all_output(result)
+    assert result.exit_code == 2
+    assert "KUTU_ROOT" in _all_output(result)
+
+
+def test_reset_refused_on_target_root(fake_stack, monkeypatch):
+    monkeypatch.delenv("KUTU_SANDBOX")
+    result = runner.invoke(app, ["reset", "--yes"])
+    assert result.exit_code == 2
+    assert "refuses" in _all_output(result)
+
+
+def test_mode_set_refused_on_target_root(fake_stack, monkeypatch):
+    monkeypatch.delenv("KUTU_SANDBOX")
+    result = runner.invoke(app, ["mode", "set", "saver"])
+    assert result.exit_code == 2
+    assert "refuses" in _all_output(result)
+    assert "MODE=balanced" in (fake_stack["etc"] / "kutu/memory.conf").read_text()
