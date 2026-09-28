@@ -129,8 +129,9 @@ def config_checks() -> list[Check]:
         ),
         Check(
             "mode-recommended",
-            None if current is None or recommended is None else current == recommended,
-            f"current={current or '?'} recommended-for-this-ram={recommended or '?'}",
+            None,
+            f"current={current or '?'} recommended-for-this-ram={recommended or '?'}"
+            + ("" if current == recommended else " (deliberate choice: informational)"),
             "kutu mode set applies the matching ceilings",
         ),
     ]
@@ -142,3 +143,7 @@ def run_all() -> list[Check]:
 
 def failures(checks: list[Check]) -> list[Check]:
     return [c for c in checks if c.ok is False]
+
+
+def indeterminate(checks: list[Check]) -> list[Check]:
+    return [c for c in checks if c.ok is None]

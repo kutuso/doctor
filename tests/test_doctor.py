@@ -29,8 +29,23 @@ def test_damon_disabled_fails(fake_stack):
     assert "damon-sysfs" in failed
 
 
-def test_mode_mismatch_is_a_check(fake_stack):
+def test_mode_mismatch_is_informational(fake_stack):
     (fake_stack["etc"] / "kutu/memory.conf").write_text("MODE=saver\n")
     checks = {c.name: c for c in doctor.run_all()}
-    assert checks["mode-recommended"].ok is False
+    assert checks["mode-recommended"].ok is None
     assert checks["mode-config"].ok is True
+    assert not doctor.failures(list(checks.values()))
+
+
+def test_unknown_mode_config_fails(fake_stack):
+    (fake_stack["etc"] / "kutu/memory.conf").write_text("MODE=turbo\n")
+    checks = {c.name: c for c in doctor.run_all()}
+    assert checks["mode-config"].ok is False
+
+
+def test_unreachable_systemd_is_indeterminate(fake_stack, monkeypatch):
+    monkeypatch.setenv("KUTU_SYSTEMCTL", "/nonexistent/systemctl")
+    checks = doctor.run_all()
+    assert not doctor.failures(checks)
+    unknown = {c.name for c in doctor.indeterminate(checks)}
+    assert {"systemd-oomd", "kutu-memory-early", "kutu-damon"} <= unknown

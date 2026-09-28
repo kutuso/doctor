@@ -94,6 +94,7 @@ def check(
     """Verify every feature the memory stack relies on (like kutu-check-kernel)."""
     checks = doctor_mod.run_all()
     failed = doctor_mod.failures(checks)
+    unknown = doctor_mod.indeterminate(checks)
     if as_json:
         _print_json(
             {
@@ -102,6 +103,7 @@ def check(
                     for c in checks
                 ],
                 "failed": len(failed),
+                "indeterminate": len(unknown),
             }
         )
     else:
@@ -114,9 +116,16 @@ def check(
                 if check.hint:
                     err_console.print(f"hint [{check.name}]: {check.hint}")
             console.print(f"[#ff6b6b]{len(failed)} check(s) failed[/]")
+        elif unknown:
+            console.print(
+                f"[{render.R2}]{len(unknown)} check(s) could not be determined[/]"
+            )
         else:
             console.print(f"[{render.R4}]all checks passed[/]")
-    raise SystemExit(1 if failed else 0)
+    if failed:
+        raise SystemExit(1)
+    if unknown:
+        raise SystemExit(2)
 
 
 @mode_app.callback()

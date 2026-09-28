@@ -55,6 +55,14 @@ def test_check_json(fake_stack):
     names = {c["name"] for c in payload["checks"]}
     assert "zswap-pool-cap" in names
     assert payload["failed"] == 0
+    assert payload["indeterminate"] == 0
+
+
+def test_check_indeterminate_exit_code(fake_stack, monkeypatch):
+    monkeypatch.setenv("KUTU_SYSTEMCTL", "/nonexistent/systemctl")
+    result = runner.invoke(app, ["check"])
+    assert result.exit_code == 2
+    assert "could not be determined" in result.stdout
 
 
 def test_mode_set(fake_stack):
