@@ -55,11 +55,11 @@ def _ram_panel(stack: memory.Stack) -> Panel:
         rows.append(
             (
                 "pressure",
-                f"some {_bar((stack.psi.some_avg10 or 0) * 10, 100, width=12, color=R7)} "
+                f"some {_bar(stack.psi.some_avg10 or 0, 100, width=12, color=R7)} "
                 f"{stack.psi.some_avg10}%  "
-                f"full {_bar((stack.psi.full_avg10 or 0) * 10, 100, width=12, color=R7)} "
+                f"full {_bar(stack.psi.full_avg10 or 0, 100, width=12, color=R7)} "
                 f"{stack.psi.full_avg10}%",
-            ),
+            )
         )
     return Panel(_kv_table(rows), title="memory", title_align="left", border_style="#2c2c42")
 
