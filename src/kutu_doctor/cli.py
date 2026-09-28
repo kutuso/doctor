@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json as jsonlib
 import os
+import shlex
 
 import typer
 from rich.console import Console
@@ -245,7 +246,7 @@ def apps_run(
         raise SystemExit(2)
     argv = apps_mod.build_scope_command(app_profile, list(cmd), memory.memtotal_kb())
     if os.environ.get("KUTU_DRY_RUN") == "1":
-        console.print(" ".join(argv), soft_wrap=True, markup=False)
+        console.print(shlex.join(argv), soft_wrap=True, markup=False)
         return
     os.execvp(argv[0], argv)
 

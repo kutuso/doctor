@@ -15,13 +15,21 @@ class RunError(RuntimeError):
         self.output = output
 
 
-def run(cmd: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+def run(
+    cmd: list[str], *, check: bool = True, timeout: float = 10.0
+) -> subprocess.CompletedProcess[str]:
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as error:
+        if not check:
+            raise
+        raise RunError(cmd, -1, f"timed out after {timeout}s") from error
     if check and proc.returncode != 0:
         raise RunError(cmd, proc.returncode, (proc.stdout + proc.stderr).strip())
     return proc
@@ -32,10 +40,10 @@ def systemctl(*args: str, check: bool = True) -> subprocess.CompletedProcess[str
 
 
 def service_active(name: str) -> bool | None:
-    """True/False for known states, None when systemctl is unavailable."""
+    """True/False for known states, None when systemctl is unavailable or stuck."""
     try:
         proc = systemctl("is-active", name, check=False)
-    except (FileNotFoundError, PermissionError, OSError):
+    except (FileNotFoundError, PermissionError, OSError, RunError):
         return None
     state = proc.stdout.strip()
     if state == "active":
