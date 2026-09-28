@@ -163,12 +163,12 @@ repo.
 
 ## Releases
 
-Tags `vX.Y.Z` build an sdist + wheel and publish to PyPI via
+`kutu-doctor` is [published on PyPI](https://pypi.org/project/kutu-doctor/).
+Tags `vX.Y.Z` publish automatically via
 [trusted publishing](https://docs.pypi.org/trusted-publishers/) (workflow:
-`.github/workflows/pypi.yml`). One-time maintainer setup: register the
-`kutu-doctor` project on PyPI with publisher `kutuso/doctor`, workflow
-`pypi.yml`, environment `pypi` — after that every tag publishes
-automatically.
+`.github/workflows/pypi.yml`) once a maintainer registers the project on
+PyPI with publisher `kutuso/doctor`, workflow `pypi.yml`, environment
+`pypi` — until then, uploads happen manually with twine.
 
 ## Relationship to kutu OS
 
