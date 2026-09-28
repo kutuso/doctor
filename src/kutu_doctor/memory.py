@@ -171,27 +171,40 @@ def user_slice_memory_high() -> int | None:
 
 
 def top_cgroups(limit: int = 6) -> list[tuple[str, int]]:
-    """Largest memory consumers among cgroups two levels below the root."""
+    """Largest cgroups by exclusive memory (own minus direct children).
+
+    Walks the whole unified hierarchy (bounded) so user app scopes like
+    user.slice/user-1000.slice/user@1000.service/app.slice/x.scope are
+    reachable, and parents no longer double-count their children.
+    """
     base = paths.sysfs() / "fs/cgroup"
-    entries: list[tuple[str, int]] = []
-    try:
-        level1 = [child for child in base.iterdir() if child.is_dir()]
-    except OSError:
-        return []
-    for child in level1:
-        current = _read_int(child / "memory.current")
-        if current:
-            entries.append((child.name, current))
+    entries: dict[str, int] = {}
+    budget = 400
+
+    def visit(path: Path, name: str, depth: int) -> int:
+        nonlocal budget
+        if budget <= 0 or depth > 8:
+            return 0
+        budget -= 1
+        current = _read_int(path / "memory.current")
+        children_total = 0
         try:
-            level2 = [gchild for gchild in child.iterdir() if gchild.is_dir()]
+            children = sorted(child for child in path.iterdir() if child.is_dir())
         except OSError:
-            continue
-        for gchild in level2:
-            current = _read_int(gchild / "memory.current")
-            if current:
-                entries.append((f"{child.name}/{gchild.name}", current))
-    entries.sort(key=lambda item: item[1], reverse=True)
-    return entries[:limit]
+            children = []
+        for child in children:
+            child_name = child.name if not name else f"{name}/{child.name}"
+            children_total += visit(child, child_name, depth + 1)
+        if current is None:
+            return children_total
+        exclusive = max(0, current - children_total)
+        if exclusive and name:
+            entries[name] = exclusive
+        return current
+
+    visit(base, "", 0)
+    ranked = sorted(entries.items(), key=lambda item: item[1], reverse=True)
+    return ranked[:limit]
 
 
 def thp_mode() -> str | None:
