@@ -227,6 +227,13 @@ def apps_run(
     if app_profile is None:
         err_console.print(f"kutu-doctor: no profile '{profile}' in /etc/kutu/apps.d")
         raise SystemExit(2)
+    if app_profile.invalid:
+        keys = ", ".join(app_profile.invalid)
+        err_console.print(
+            f"kutu-doctor: profile '{profile}' has invalid {keys} in {app_profile.source}; "
+            "refusing to launch without its safety ceilings"
+        )
+        raise SystemExit(2)
     argv = apps_mod.build_scope_command(app_profile, list(cmd), memory.memtotal_kb())
     if os.environ.get("KUTU_DRY_RUN") == "1":
         console.print(" ".join(argv), soft_wrap=True, markup=False)

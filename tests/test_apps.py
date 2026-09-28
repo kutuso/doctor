@@ -27,8 +27,9 @@ def test_scope_command_shape_and_uniqueness(fake_stack):
     assert "--user" in cmd and "--scope" in cmd
     assert "--expand-environment=no" in cmd
     assert any(a.startswith("--unit=app-firefox-") for a in cmd)
-    assert f"-p MemoryHigh={fake_stack['memtotal_kb'] * 1024 * 50 // 100}" in cmd
-    assert "-p CPUWeight=100" in cmd
+    high = fake_stack["memtotal_kb"] * 1024 * 50 // 100
+    assert cmd[cmd.index("-p") + 1] == f"MemoryHigh={high}"
+    assert cmd[cmd.index("-p", cmd.index("-p") + 1) + 1] == "CPUWeight=100"
     assert cmd[cmd.index("--") + 1:] == ["/usr/bin/firefox"]
 
     cmd2 = apps.build_scope_command(ff, ["/usr/bin/firefox"], fake_stack["memtotal_kb"])
@@ -54,3 +55,29 @@ def test_profile_names_reject_traversal(fake_stack):
     assert apps.get_app("") is None
     assert apps.get_app(".hidden") is None
     assert apps.valid_profile_name("firefox-11.x_2") is True
+
+
+def test_profile_parsing_matches_kutu_run_shell_semantics(fake_stack):
+    conf = fake_stack["etc"] / "kutu/apps.d/shellstyle.conf"
+    conf.write_text(
+        'KUTU_MEMORY_HIGH_PCT="50"  # quoted with a comment\n'
+        "KUTU_CPU_WEIGHT='80'\n"
+        "KUTU_MEMORY_SWAP_MAX=2G\n"
+        "KUTU_MEMORY_MERGE=1\n"
+    )
+    profile = apps.get_app("shellstyle")
+    assert profile.memory_high_pct == 50
+    assert profile.cpu_weight == 80
+    assert profile.memory_swap_max == "2G"
+    assert profile.memory_merge is True
+    assert profile.invalid == []
+
+
+def test_profile_parsing_flags_unsafe_values(fake_stack):
+    conf = fake_stack["etc"] / "kutu/apps.d/bad.conf"
+    conf.write_text("KUTU_MEMORY_HIGH_PCT=500\nKUTU_CPU_WEIGHT=0\nKUTU_MEMORY_SWAP_MAX=\n")
+    profile = apps.get_app("bad")
+    assert profile.memory_high_pct is None
+    assert profile.cpu_weight is None
+    expected = ["KUTU_CPU_WEIGHT", "KUTU_MEMORY_HIGH_PCT", "KUTU_MEMORY_SWAP_MAX"]
+    assert sorted(profile.invalid) == expected

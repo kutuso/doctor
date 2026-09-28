@@ -22,6 +22,14 @@ class AppProfile:
     cpu_weight: int | None = None
     memory_merge: bool = False
     source: str = ""
+    invalid: list[str] = dataclasses.field(default_factory=list)
+
+
+def _shell_value(raw: str) -> str:
+    value = raw.split("#", 1)[0].strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1].strip()
+    return value
 
 
 def _parse(path) -> AppProfile:
@@ -34,15 +42,27 @@ def _parse(path) -> AppProfile:
         match = re.match(r"\s*([A-Z_]+)\s*=\s*(.*?)\s*$", line)
         if not match:
             continue
-        key, value = match.group(1), match.group(2)
-        if key == "KUTU_MEMORY_HIGH_PCT" and value.isdigit():
-            profile.memory_high_pct = int(value)
+        key, value = match.group(1), _shell_value(match.group(2))
+        if key == "KUTU_MEMORY_HIGH_PCT":
+            if value.isdigit() and 1 <= int(value) <= 100:
+                profile.memory_high_pct = int(value)
+            else:
+                profile.invalid.append(key)
         elif key == "KUTU_MEMORY_SWAP_MAX":
-            profile.memory_swap_max = value
-        elif key == "KUTU_CPU_WEIGHT" and value.isdigit():
-            profile.cpu_weight = int(value)
+            if value:
+                profile.memory_swap_max = value
+            else:
+                profile.invalid.append(key)
+        elif key == "KUTU_CPU_WEIGHT":
+            if value.isdigit() and 1 <= int(value) <= 10000:
+                profile.cpu_weight = int(value)
+            else:
+                profile.invalid.append(key)
         elif key == "KUTU_MEMORY_MERGE":
-            profile.memory_merge = value == "1"
+            if value == "1":
+                profile.memory_merge = True
+            elif value != "0":
+                profile.invalid.append(key)
     return profile
 
 
@@ -77,13 +97,13 @@ def build_scope_command(profile: AppProfile, argv: list[str], memtotal_kb: int |
     unit = f"app-{safe}-{os.getpid()}-{random.randint(0, 65535)}"
     cmd.append(f"--unit={unit}")
     if (high := effective_memory_high(profile, memtotal_kb)) is not None:
-        cmd.append(f"-p MemoryHigh={high}")
+        cmd += ["-p", f"MemoryHigh={high}"]
     if profile.memory_swap_max is not None:
-        cmd.append(f"-p MemorySwapMax={profile.memory_swap_max}")
+        cmd += ["-p", f"MemorySwapMax={profile.memory_swap_max}"]
     if profile.cpu_weight is not None:
-        cmd.append(f"-p CPUWeight={profile.cpu_weight}")
+        cmd += ["-p", f"CPUWeight={profile.cpu_weight}"]
     if profile.memory_merge:
-        cmd.append("-p MemoryMerge=yes")
+        cmd += ["-p", "MemoryMerge=yes"]
     cmd.append("--")
     cmd.extend(argv)
     return cmd

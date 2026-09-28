@@ -96,6 +96,13 @@ def test_apps_run_missing_profile(fake_stack):
     assert result.exit_code == 2
 
 
+def test_apps_run_refuses_invalid_profile(fake_stack):
+    (fake_stack["etc"] / "kutu/apps.d/bad.conf").write_text("KUTU_MEMORY_HIGH_PCT=500\n")
+    result = runner.invoke(app, ["apps", "run", "bad", "true"])
+    assert result.exit_code == 2
+    assert "invalid" in _all_output(result)
+
+
 def _all_output(result) -> str:
     import contextlib
 
