@@ -32,7 +32,8 @@ def test_damon_disabled_fails(fake_stack):
 def test_mode_mismatch_is_informational(fake_stack):
     (fake_stack["etc"] / "kutu/memory.conf").write_text("MODE=saver\n")
     checks = {c.name: c for c in doctor.run_all()}
-    assert checks["mode-recommended"].ok is None
+    assert checks["mode-recommended"].ok is not False
+    assert "informational" in checks["mode-recommended"].detail
     assert checks["mode-config"].ok is True
     assert not doctor.failures(list(checks.values()))
 
