@@ -156,3 +156,50 @@ def test_sandbox_rooted_at_slash_is_not_a_sandbox(monkeypatch):
     monkeypatch.setenv("KUTU_ROOT", "/")
     monkeypatch.setenv("KUTU_SANDBOX", "1")
     assert paths.is_sandboxed() is False
+
+
+def test_apps_run_passes_dashed_arguments_through(fake_stack, monkeypatch):
+    monkeypatch.setenv("KUTU_DRY_RUN", "1")
+    result = runner.invoke(app, ["apps", "run", "firefox", "firefox", "--new-window", "-P", "x"])
+    assert result.exit_code == 0, _all_output(result)
+    assert result.stdout.rstrip().endswith("-- firefox --new-window -P x")
+
+
+def test_apps_run_missing_launcher_is_a_clean_error(fake_stack, monkeypatch):
+    monkeypatch.setenv("KUTU_SYSTEMD_RUN", "/nonexistent/systemd-run")
+    result = runner.invoke(app, ["apps", "run", "firefox", "true"])
+    assert result.exit_code == 127
+    assert "systemd-run" in _all_output(result)
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+
+
+def test_check_hint_shows_the_check_name(fake_stack):
+    (fake_stack["sys"] / "module/zswap/parameters/max_pool_percent").write_text("20")
+    result = runner.invoke(app, ["check"])
+    assert "hint [zswap-pool-cap]:" in _all_output(result)
+
+
+def test_json_output_is_plain_even_with_forced_color(fake_stack, monkeypatch):
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    for args in (["status", "--json"], ["check", "--json"]):
+        result = runner.invoke(app, args)
+        assert "\x1b" not in result.stdout
+        json.loads(result.stdout)
+
+
+def test_dash_without_a_terminal_prints_one_frame_and_exits(fake_stack, monkeypatch):
+    def forbidden(_seconds):
+        raise RuntimeError("dashboard looped on a non-terminal")
+
+    monkeypatch.setattr("time.sleep", forbidden)
+    result = runner.invoke(app, ["dash"])
+    assert result.exit_code == 0, result.output
+    assert "top consumers" in result.stdout
+
+
+def test_profile_names_with_markup_characters_do_not_crash(fake_stack):
+    (fake_stack["etc"] / "kutu/apps.d/x[bold]y.conf").write_text("KUTU_MEMORY_HIGH_PCT=10\n")
+    for args in (["apps"], ["status"], ["dash"]):
+        result = runner.invoke(app, args)
+        assert result.exit_code == 0, (args, result.output)
+        assert "x[bold]y" in result.stdout

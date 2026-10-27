@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from rich.markup import escape
 from rich.table import Table
 
 from . import memory
@@ -149,7 +150,7 @@ def status_table(stack: memory.Stack, apps: list) -> Table:
         pct = f" ({app.memory_high_pct}%)" if app.memory_high_pct else ""
         high = effective_memory_high(app, stack.memtotal_kb)
         line = f"MemoryHigh {human_bytes(high)}{pct}" if high else "no ceiling"
-        table.add_row(f"[{color}]{app.name}[/]", line)
+        table.add_row(f"[{color}]{escape(app.name)}[/]", line)
 
     return table
 

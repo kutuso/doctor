@@ -6,6 +6,7 @@ import time
 
 from rich.console import Group, RenderableType
 from rich.live import Live
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -119,9 +120,8 @@ def _stack_panel(stack: memory.Stack) -> Panel:
     for app in _apps():
         high = effective_memory_high(app, stack.memtotal_kb)
         pct = f" [dim]({app.memory_high_pct}%)[/]" if app.memory_high_pct else ""
-        rows.append(
-            (f"[{R6}]{app.name}[/]", f"ceiling {human_bytes(high)}{pct}" if high else "no ceiling")
-        )
+        ceiling = f"ceiling {human_bytes(high)}{pct}" if high else "no ceiling"
+        rows.append((f"[{R6}]{escape(app.name)}[/]", ceiling))
     return Panel(_kv_table(rows), title="stack", title_align="left", border_style="#2c2c42")
 
 
@@ -135,7 +135,7 @@ def _top_panel(top: list[tuple[str, int]]) -> Panel:
     peak = top[0][1] if top else 1
     for name, current in top:
         bar = _bar(current, peak, width=16, color=R2)
-        table.add_row(f"[{R5}]{name}[/]", bar, human_bytes(current))
+        table.add_row(f"[{R5}]{escape(name)}[/]", bar, human_bytes(current))
     return Panel(table, title="top consumers", title_align="left", border_style="#2c2c42")
 
 
@@ -167,6 +167,9 @@ def run(interval: float = 2.0, services: bool = True) -> None:
     from rich.console import Console
 
     console = Console()
+    if not console.is_terminal:
+        console.print(build_frame(services=services))
+        return
     try:
         with Live(build_frame(services=services), console=console, screen=False) as live:
             while True:
