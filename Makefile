@@ -1,4 +1,4 @@
-.PHONY: test lint fmt install vmtest vendor
+.PHONY: test lint fmt build install vmtest vendor
 
 test:
 	python3 -m pytest
@@ -15,6 +15,9 @@ vmtest:
 
 vendor:
 	rsync -a --delete --exclude __pycache__ src/kutu_doctor/ ../os/packages/kutu-doctor/kutu_doctor/
+
+build:
+	python3 -m build
 
 install:
 	pipx install -e .
