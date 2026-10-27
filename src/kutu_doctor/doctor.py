@@ -19,6 +19,14 @@ def _file(p) -> bool | None:
     return memory.probe(p, "file")
 
 
+def _zram_swap_active(proc) -> bool:
+    try:
+        lines = (proc / "swaps").read_text().splitlines()[1:]
+    except OSError:
+        return False
+    return any(line.split()[:1] and "/zram" in line.split()[0] for line in lines)
+
+
 def kernel_checks() -> list[Check]:
     sys = paths.sysfs()
     proc = paths.proc()
@@ -26,6 +34,10 @@ def kernel_checks() -> list[Check]:
     lru = memory.mglru()
     thp = memory.thp_mode()
 
+    zram_active = _zram_swap_active(proc)
+    zswap_detail = f"enabled={'Y' if zp.enabled else 'N' if zp.enabled is not None else '?'}"
+    if zram_active and not zp.enabled:
+        zswap_detail += " (zram swap active instead)"
     zpool_detail = (
         f"zsmalloc default (param absent on kernels >= 6.10) or explicit; got {zp.zpool or 'none'}"
     )
@@ -36,9 +48,9 @@ def kernel_checks() -> list[Check]:
     return [
         Check(
             "zswap",
-            zp.enabled is not None and zp.enabled,
-            f"enabled={'Y' if zp.enabled else 'N' if zp.enabled is not None else '?'}",
-            "the memory stack needs zswap; check the kernel command line",
+            (zp.enabled is not None and zp.enabled) or zram_active,
+            zswap_detail,
+            "the memory stack needs zswap or zram swap; check the kernel command line",
         ),
         Check(
             "zswap-compressor",
