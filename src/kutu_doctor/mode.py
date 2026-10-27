@@ -43,25 +43,45 @@ MODES["balanced"] = Mode("balanced", 90, {"firefox": 50})
 MODES["performance"] = Mode("performance", 95, {"firefox": 70})
 
 
+_MODE_LINE = re.compile(r"""^\s*MODE\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s#]*))""")
+
+
 def current_mode() -> str | None:
-    """MODE= from /etc/kutu/memory.conf (the post-firstboot source of truth)."""
+    """MODE= from /etc/kutu/memory.conf (the post-firstboot source of truth).
+
+    Shell semantics: the last assignment wins and surrounding quotes are dropped.
+    """
     try:
         text = paths.memory_conf().read_text()
-    except OSError:
+    except (OSError, ValueError):
         return None
+    found: str | None = None
     for line in text.splitlines():
-        match = re.match(r"\s*MODE\s*=\s*(\S+)", line)
+        match = _MODE_LINE.match(line)
         if match:
-            return match.group(1)
-    return None
+            found = next(group for group in match.groups() if group is not None).strip() or None
+    return found
 
 
 def set_mode(name: str, *, apply_live: bool = True, memtotal_kb: int | None = None) -> None:
     """Persist MODE and (by default) apply the ceilings immediately."""
     mode = MODES[name]
+    if apply_live and memtotal_kb is None:
+        from . import memory
+
+        memtotal_kb = memory.memtotal_kb()
+        if not memtotal_kb:
+            raise SystemExit("kutu: cannot read MemTotal; cannot compute ceilings")
     _write_memory_conf(name)
     if apply_live:
         apply_mode(mode, memtotal_kb=memtotal_kb)
+
+
+def _atomic_write(path, text: str) -> None:
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    tmp.chmod(0o644)
+    os.replace(tmp, path)
 
 
 def _write_memory_conf(name: str) -> None:
@@ -69,18 +89,22 @@ def _write_memory_conf(name: str) -> None:
     conf.parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
     replaced = False
+    existing = ""
     if conf.exists():
-        for line in conf.read_text().splitlines():
-            if re.match(r"\s*MODE\s*=", line):
+        try:
+            existing = conf.read_text()
+        except ValueError:
+            existing = ""
+    for line in existing.splitlines():
+        if _MODE_LINE.match(line):
+            if not replaced:
                 lines.append(f"MODE={name}")
-                replaced = True
-            else:
-                lines.append(line)
+            replaced = True
+        else:
+            lines.append(line)
     if not replaced:
         lines.append(f"MODE={name}")
-    tmp = conf.with_suffix(".conf.tmp")
-    tmp.write_text("\n".join(lines).rstrip("\n") + "\n")
-    os.replace(tmp, conf)
+    _atomic_write(conf, "\n".join(lines).rstrip("\n") + "\n")
 
 
 def apply_mode(mode: Mode, *, memtotal_kb: int | None = None) -> dict[str, int]:
@@ -100,9 +124,7 @@ def apply_mode(mode: Mode, *, memtotal_kb: int | None = None) -> dict[str, int]:
     user_high = total * 1024 * mode.user_high_pct // 100
     dropin = paths.user_slice_dropin()
     dropin.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dropin.with_suffix(".conf.tmp")
-    tmp.write_text(f"[Slice]\nMemoryHigh={user_high}\n")
-    os.replace(tmp, dropin)
+    _atomic_write(dropin, f"[Slice]\nMemoryHigh={user_high}\n")
 
     app_bytes: dict[str, int] = {}
     apps_dir = paths.apps_dir()
@@ -127,6 +149,4 @@ def _replace_assignment(path, key: str, value: str) -> None:
         new_text = pattern.sub(rf"\g<1>{value}", text)
     else:
         new_text = text.rstrip("\n") + f"\n{key}={value}\n"
-    tmp = path.with_suffix(".conf.tmp")
-    tmp.write_text(new_text)
-    os.replace(tmp, path)
+    _atomic_write(path, new_text)

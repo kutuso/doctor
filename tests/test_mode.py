@@ -51,3 +51,44 @@ def test_apply_mode_updates_each_ceiling(fake_stack):
     total = fake_stack["memtotal_kb"]
     assert applied["user.slice"] == total * 1024 * 95 // 100
     assert applied["firefox"] == total * 1024 * 70 // 100
+
+
+def test_current_mode_strips_quotes_and_last_assignment_wins(fake_stack):
+    conf = fake_stack["etc"] / "kutu/memory.conf"
+    conf.write_text('MODE=saver\nMODE="performance"  # tuned\n')
+    assert mode.current_mode() == "performance"
+    conf.write_text("MODE='balanced'\n")
+    assert mode.current_mode() == "balanced"
+
+
+def test_current_mode_tolerates_undecodable_conf(fake_stack):
+    (fake_stack["etc"] / "kutu/memory.conf").write_bytes(b"\xff\xfe MODE=saver\n")
+    assert mode.current_mode() is None
+
+
+def test_written_files_stay_world_readable_under_strict_umask(fake_stack):
+    import os
+    import stat
+
+    old = os.umask(0o077)
+    try:
+        mode.set_mode("saver")
+    finally:
+        os.umask(old)
+    for rel in (
+        "kutu/memory.conf",
+        "systemd/system/user.slice.d/50-kutu.conf",
+        "kutu/apps.d/firefox.conf",
+    ):
+        assert stat.S_IMODE((fake_stack["etc"] / rel).stat().st_mode) == 0o644
+
+
+def test_set_mode_without_memtotal_leaves_config_untouched(fake_stack, monkeypatch, tmp_path):
+    import pytest
+
+    empty = tmp_path / "emptyproc"
+    empty.mkdir()
+    monkeypatch.setenv("KUTU_PROC", str(empty))
+    with pytest.raises(SystemExit):
+        mode.set_mode("saver")
+    assert mode.current_mode() == "balanced"
