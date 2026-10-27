@@ -1,7 +1,7 @@
 # Maintainer: kutu OS contributors <https://github.com/kutuso/doctor>
 
 pkgname=kutu-doctor
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc='Live memory-health dashboard and checker for kutu OS (zswap, MGLRU, DAMON, PSI)'
 arch=(any)

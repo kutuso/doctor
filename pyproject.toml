@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kutu-doctor"
-version = "0.1.0"
+version = "0.2.0"
 description = "kutu-doctor: live memory-health dashboard and control for kutu OS"
 readme = "README.md"
 license = "MIT"
