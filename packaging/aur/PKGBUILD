@@ -11,7 +11,7 @@ depends=(python python-typer python-rich)
 makedepends=(python-build python-installer python-hatchling)
 checkdepends=(python-pytest)
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('337fd9d100721707094586d4305527ef815d8e2ebad855396a12a9380db818d6')
 
 build() {
   cd "doctor-$pkgver"
