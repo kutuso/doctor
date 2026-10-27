@@ -57,8 +57,20 @@ def systemd_run_cmd() -> list[str]:
 
 
 def is_sandboxed() -> bool:
-    return bool(os.environ.get("KUTU_ROOT")) and os.environ.get("KUTU_SANDBOX") == "1"
+    if not os.environ.get("KUTU_ROOT") or os.environ.get("KUTU_SANDBOX") != "1":
+        return False
+    return root().resolve() != Path("/")
 
 
 def is_target_root() -> bool:
     return bool(os.environ.get("KUTU_ROOT")) and not is_sandboxed()
+
+
+def has_overrides() -> bool:
+    names = ("KUTU_SYSFS", "KUTU_PROC", "KUTU_SYSTEMCTL", "KUTU_SYSTEMD_RUN")
+    return any(os.environ.get(name) for name in names)
+
+
+def mutation_blocked() -> bool:
+    """True when real files must not be written: target roots and fake kernel/command paths."""
+    return is_target_root() or (has_overrides() and not is_sandboxed())

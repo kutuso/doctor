@@ -139,3 +139,20 @@ def test_mode_set_refused_on_target_root(fake_stack, monkeypatch):
     assert result.exit_code == 2
     assert "refuses" in _all_output(result)
     assert "MODE=balanced" in (fake_stack["etc"] / "kutu/memory.conf").read_text()
+
+
+def test_mode_set_refused_with_fake_kernel_paths_outside_sandbox(tmp_path, monkeypatch):
+    for var in ("KUTU_ROOT", "KUTU_SANDBOX", "KUTU_SYSTEMCTL"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("KUTU_PROC", str(tmp_path))
+    result = runner.invoke(app, ["mode", "set", "saver"])
+    assert result.exit_code == 2
+    assert "refuses" in _all_output(result)
+
+
+def test_sandbox_rooted_at_slash_is_not_a_sandbox(monkeypatch):
+    from kutu_doctor import paths
+
+    monkeypatch.setenv("KUTU_ROOT", "/")
+    monkeypatch.setenv("KUTU_SANDBOX", "1")
+    assert paths.is_sandboxed() is False

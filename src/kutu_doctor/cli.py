@@ -40,10 +40,11 @@ MODE_ARGUMENT = typer.Argument(help="saver | balanced | performance")
 
 
 def _refuse_target_root(action: str) -> None:
-    if paths.is_target_root():
+    if paths.mutation_blocked():
         err_console.print(
-            f"kutu-doctor: {action} refuses to run against a KUTU_ROOT target; "
-            "KUTU_ROOT is for read-only inspection (tests use KUTU_SANDBOX=1)"
+            f"kutu-doctor: {action} refuses to run with KUTU_ROOT/KUTU_SYSFS/KUTU_PROC/"
+            "KUTU_SYSTEMCTL/KUTU_SYSTEMD_RUN overrides; they are for read-only inspection "
+            "(tests use KUTU_ROOT with KUTU_SANDBOX=1)"
         )
         raise SystemExit(2)
 
@@ -256,7 +257,7 @@ def reset(
     yes: bool = typer.Option(False, "--yes", "-y", help="skip the confirmation prompt"),
 ) -> None:
     """Return the memory stack to stock Arch behavior (runs kutu-reset)."""
-    if paths.is_sandboxed() or paths.is_target_root():
+    if paths.is_sandboxed() or paths.mutation_blocked():
         err_console.print(
             "kutu-doctor: reset refuses to run against a KUTU_ROOT target; "
             "kutu-reset operates on the live /etc, /sys and /boot, so run it "
