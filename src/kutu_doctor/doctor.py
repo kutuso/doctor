@@ -134,7 +134,7 @@ def config_checks() -> list[Check]:
             "mode-recommended",
             current in mode_mod.MODES,
             advisory,
-            "kutu mode set applies the matching ceilings",
+            "kutu-doctor mode set applies the matching ceilings",
         ),
     ]
 

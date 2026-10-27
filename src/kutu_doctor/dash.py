@@ -133,6 +133,16 @@ def _stack_panel(stack: memory.Stack) -> Panel:
     return Panel(_kv_table(rows), title="stack", title_align="left", border_style="#2c2c42")
 
 
+def _short_cgroup(name: str, limit: int = 32) -> str:
+    if len(name) <= limit:
+        return name
+    parts = name.split("/")
+    short = "/".join(parts[-2:]) if len(parts) > 1 else name
+    if len(short) <= limit:
+        return f"…/{short}"
+    return f"…{short[-(limit - 1):]}"
+
+
 def _top_panel(top: list[tuple[str, int]]) -> Panel:
     table = Table.grid(padding=(0, 2))
     table.add_column(no_wrap=True)
@@ -143,7 +153,7 @@ def _top_panel(top: list[tuple[str, int]]) -> Panel:
     peak = top[0][1] if top else 1
     for name, current in top:
         bar = _bar(current, peak, width=16, color=R2)
-        table.add_row(f"[{R5}]{escape(name)}[/]", bar, human_bytes(current))
+        table.add_row(f"[{R5}]{escape(_short_cgroup(name))}[/]", bar, human_bytes(current))
     return Panel(table, title="top consumers", title_align="left", border_style="#2c2c42")
 
 

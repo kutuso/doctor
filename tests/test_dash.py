@@ -104,3 +104,11 @@ def test_top_cgroups_reaches_user_slice_on_a_busy_system(fake_stack):
         (unit / "memory.current").write_text("1048576")
     names = [name for name, _ in memory.top_cgroups(limit=3)]
     assert names[0] == "user.slice/session-1.scope"
+
+
+def test_long_cgroup_names_keep_their_leaf():
+    name = "user.slice/user-1000.slice/user@1000.service/app.slice/app-firefox-123.scope"
+    short = dash._short_cgroup(name)
+    assert short.endswith("app.slice/app-firefox-123.scope")
+    assert len(short) <= 34
+    assert dash._short_cgroup("system.slice") == "system.slice"
