@@ -2,19 +2,33 @@
 
 from __future__ import annotations
 
+import errno
+import os
 import re
+import stat
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import paths
 
-PAGE_SIZE = 4096
+PAGE_SIZE = os.sysconf("SC_PAGE_SIZE") if hasattr(os, "sysconf") else 4096
+
+
+def probe(path: Path, kind: str) -> bool | None:
+    """Whether path exists as a 'dir' or 'file': None when permissions hide the answer."""
+    try:
+        mode = path.stat().st_mode
+    except OSError as error:
+        if error.errno in {errno.ENOENT, errno.ENOTDIR}:
+            return False
+        return None
+    return stat.S_ISDIR(mode) if kind == "dir" else stat.S_ISREG(mode)
 
 
 def _read(path: Path) -> str | None:
     try:
         return path.read_text().strip()
-    except OSError:
+    except (OSError, ValueError):
         return None
 
 
@@ -75,10 +89,6 @@ class ZswapStats:
     same_filled_pages: int | None = None
     compressed_ratio: float | None = None
     pool_cap_bytes: int | None = None
-
-    @property
-    def approximates(self) -> bool:
-        return self.pool_total_size not in (None, 0) and self.stored_pages
 
 
 def zswap_params() -> ZswapParams:
@@ -179,12 +189,12 @@ def top_cgroups(limit: int = 6) -> list[tuple[str, int]]:
     """
     base = paths.sysfs() / "fs/cgroup"
     entries: dict[str, int] = {}
-    budget = 400
+    budget = 4000
 
     def visit(path: Path, name: str, depth: int) -> int:
         nonlocal budget
-        if budget <= 0 or depth > 8:
-            return 0
+        if budget <= 0 or depth > 12:
+            return _read_int(path / "memory.current") or 0
         budget -= 1
         current = _read_int(path / "memory.current")
         children_total = 0

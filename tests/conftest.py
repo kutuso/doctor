@@ -24,6 +24,7 @@ def build_kernel_tree(sysroot: pathlib.Path, procroot: pathlib.Path, *, pool_pct
     (lru / "min_ttl_ms").write_text("1000")
 
     (sysroot / "kernel/mm/damon/admin/kdamonds/0").mkdir(parents=True)
+    (sysroot / "kernel/mm/damon/admin/kdamonds/nr_kdamonds").write_text("1")
     (sysroot / "kernel/mm/damon/admin/kdamonds/0/state").write_text("on")
 
     (sysroot / "kernel/mm/transparent_hugepage").mkdir(parents=True)

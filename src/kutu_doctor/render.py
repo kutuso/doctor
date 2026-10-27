@@ -100,12 +100,10 @@ def status_table(stack: memory.Stack, apps: list) -> Table:
     table.add_row("mode", mode_line)
 
     if stack.memtotal_kb:
-        ram = (
-            f"{human_bytes(stack.memtotal_kb * 1024)} total · "
-            f"{human_bytes((stack.memavailable_kb or 0) * 1024)} available"
-        )
-        if stack.swaptotal_kb:
-            used = stack.swaptotal_kb - (stack.swapfree_kb or 0)
+        avail = None if stack.memavailable_kb is None else stack.memavailable_kb * 1024
+        ram = f"{human_bytes(stack.memtotal_kb * 1024)} total · {human_bytes(avail)} available"
+        if stack.swaptotal_kb and stack.swapfree_kb is not None:
+            used = stack.swaptotal_kb - stack.swapfree_kb
             ram += (
                 f" · swap {human_bytes(used * 1024)} / {human_bytes(stack.swaptotal_kb * 1024)}"
             )
@@ -131,7 +129,8 @@ def status_table(stack: memory.Stack, apps: list) -> Table:
     lru = stack.lru
     table.add_row(
         "mglru",
-        f"{_yn(lru.enabled not in (None, 0))} · min_ttl {_num(lru.min_ttl_ms)} ms",
+        f"{_yn(None if lru.enabled is None else lru.enabled != 0)} "
+        f"· min_ttl {_num(lru.min_ttl_ms, '?')} ms",
     )
     table.add_row("damon", f"[{R5}]{_num(stack.damon)}[/]")
     table.add_row("oomd", _yn(stack.oomd_active))

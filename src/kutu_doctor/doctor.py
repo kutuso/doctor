@@ -15,8 +15,8 @@ class Check:
     hint: str | None = None
 
 
-def _file(p) -> bool:
-    return p.is_file()
+def _file(p) -> bool | None:
+    return memory.probe(p, "file")
 
 
 def kernel_checks() -> list[Check]:
@@ -78,8 +78,8 @@ def kernel_checks() -> list[Check]:
         ),
         Check(
             "damon-sysfs",
-            (sys / "kernel/mm/damon/admin").is_dir(),
-            "presence of the sysfs interface",
+            memory.probe(sys / "kernel/mm/damon/admin/kdamonds/nr_kdamonds", "file"),
+            "presence of kdamonds/nr_kdamonds in the DAMON sysfs interface",
             "kernel needs CONFIG_DAMON_SYSFS",
         ),
         Check(

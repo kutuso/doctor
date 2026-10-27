@@ -34,17 +34,22 @@ def _kv_table(rows: list[tuple[str, RenderableType]]) -> Table:
     return table
 
 
+def _pct(value: float | None) -> str:
+    return "n/a" if value is None else f"{value}%"
+
+
 def _ram_panel(stack: memory.Stack) -> Panel:
     total_b = (stack.memtotal_kb or 0) * 1024
-    used_b = total_b - (stack.memavailable_kb or 0) * 1024
-    rows = [
-        (
-            "ram",
-            f"{_bar(used_b, total_b)} {human_bytes(used_b)} / {human_bytes(total_b)}",
-        ),
-    ]
-    if stack.swaptotal_kb:
-        swap_used = (stack.swaptotal_kb - (stack.swapfree_kb or 0)) * 1024
+    rows: list[tuple[str, RenderableType]] = []
+    if stack.memavailable_kb is None:
+        rows.append(("ram", f"[dim]available unknown[/] / {human_bytes(total_b)}"))
+    else:
+        used_b = total_b - stack.memavailable_kb * 1024
+        rows.append(
+            ("ram", f"{_bar(used_b, total_b)} {human_bytes(used_b)} / {human_bytes(total_b)}")
+        )
+    if stack.swaptotal_kb and stack.swapfree_kb is not None:
+        swap_used = (stack.swaptotal_kb - stack.swapfree_kb) * 1024
         rows.append(
             (
                 "swap",
@@ -53,16 +58,19 @@ def _ram_panel(stack: memory.Stack) -> Panel:
             ),
         )
     if stack.psi:
+        some, full = stack.psi.some_avg10, stack.psi.full_avg10
         rows.append(
             (
                 "pressure",
-                f"some {_bar(stack.psi.some_avg10 or 0, 100, width=12, color=R7)} "
-                f"{stack.psi.some_avg10}%  "
-                f"full {_bar(stack.psi.full_avg10 or 0, 100, width=12, color=R7)} "
-                f"{stack.psi.full_avg10}%",
+                f"some {_bar(some or 0, 100, width=12, color=R7)} {_pct(some)}  "
+                f"full {_bar(full or 0, 100, width=12, color=R7)} {_pct(full)}",
             )
         )
     return Panel(_kv_table(rows), title="memory", title_align="left", border_style="#2c2c42")
+
+
+def _flag(flag: bool | None) -> str:
+    return "?" if flag is None else "on" if flag else "off"
 
 
 def _zswap_panel(stack: memory.Stack) -> Panel:
@@ -70,8 +78,9 @@ def _zswap_panel(stack: memory.Stack) -> Panel:
     rows = [
         (
             "state",
-            f"{z.compressor or '?'} · cap {z.max_pool_percent or '?'}% · "
-            f"shrinker {'on' if z.shrinker else 'off'}",
+            f"{_flag(z.enabled)} · {z.compressor or '?'} · "
+            f"cap {'?' if z.max_pool_percent is None else z.max_pool_percent}% · "
+            f"shrinker {_flag(z.shrinker)}",
         ),
     ]
     if live.pool_total_size is not None:
@@ -101,22 +110,21 @@ def _stack_panel(stack: memory.Stack) -> Panel:
             return "[dim]?[/]"
         return f"[{R4}]●[/] on" if flag else "[#ff6b6b]●[/] off"
 
+    lru = stack.lru
+    lru_on = None if lru.enabled is None else lru.enabled != 0
+    ttl = "?" if lru.min_ttl_ms is None else lru.min_ttl_ms
     damon = f"[{R5}]{stack.damon or '?'}[/]" if stack.damon else "[dim]n/a[/]"
     rows = [
-        ("mglru", f"{state(stack.lru.enabled not in (None, 0))} · ttl {stack.lru.min_ttl_ms} ms"),
+        ("mglru", f"{state(lru_on)} · ttl {ttl} ms"),
         ("damon", damon),
         ("oomd", state(stack.oomd_active)),
         ("thp", stack.thp or "?"),
     ]
     if stack.user_high is not None:
-        total_b = max(1, (stack.memtotal_kb or 1) * 1024)
-        pct = stack.user_high * 100 // total_b
-        rows.append(
-            (
-                "user.slice",
-                f"MemoryHigh {human_bytes(stack.user_high)} [dim]({pct}% of ram)[/]",
-            ),
-        )
+        share = ""
+        if stack.memtotal_kb:
+            share = f" [dim]({stack.user_high * 100 // (stack.memtotal_kb * 1024)}% of ram)[/]"
+        rows.append(("user.slice", f"MemoryHigh {human_bytes(stack.user_high)}{share}"))
     for app in _apps():
         high = effective_memory_high(app, stack.memtotal_kb)
         pct = f" [dim]({app.memory_high_pct}%)[/]" if app.memory_high_pct else ""

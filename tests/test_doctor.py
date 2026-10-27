@@ -50,3 +50,25 @@ def test_unreachable_systemd_is_indeterminate(fake_stack, monkeypatch):
     assert not doctor.failures(checks)
     unknown = {c.name for c in doctor.indeterminate(checks)}
     assert {"systemd-oomd", "kutu-memory-early", "kutu-damon"} <= unknown
+
+
+def test_damon_needs_the_kdamonds_interface(fake_stack):
+    (fake_stack["sys"] / "kernel/mm/damon/admin/kdamonds/nr_kdamonds").unlink()
+    failed = {c.name for c in doctor.failures(doctor.run_all())}
+    assert "damon-sysfs" in failed
+
+
+def test_unreadable_sysfs_directory_is_indeterminate_not_a_crash(fake_stack):
+    import os
+
+    import pytest
+
+    if os.geteuid() == 0:
+        pytest.skip("permission bits do not bind root")
+    blocked = fake_stack["sys"] / "kernel/mm/damon"
+    blocked.chmod(0)
+    try:
+        checks = {c.name: c for c in doctor.run_all()}
+    finally:
+        blocked.chmod(0o755)
+    assert checks["damon-sysfs"].ok is None
