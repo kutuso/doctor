@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
 
 from . import paths
 
@@ -27,9 +29,13 @@ def run(
             timeout=timeout,
         )
     except subprocess.TimeoutExpired as error:
-        if not check:
-            raise
-        raise RunError(cmd, -1, f"timed out after {timeout}s") from error
+        if check:
+            raise RunError(cmd, 124, f"timed out after {timeout}s") from error
+        return subprocess.CompletedProcess(cmd, 124, "", f"timed out after {timeout}s")
+    except OSError as error:
+        if check:
+            raise RunError(cmd, 127, str(error)) from error
+        return subprocess.CompletedProcess(cmd, 127, "", str(error))
     if check and proc.returncode != 0:
         raise RunError(cmd, proc.returncode, (proc.stdout + proc.stderr).strip())
     return proc
@@ -43,7 +49,7 @@ def service_active(name: str) -> bool | None:
     """True/False for known states, None when systemctl is unavailable or stuck."""
     try:
         proc = systemctl("is-active", name, check=False)
-    except (FileNotFoundError, PermissionError, OSError, RunError):
+    except (OSError, RunError, subprocess.SubprocessError):
         return None
     state = proc.stdout.strip()
     if state == "active":
@@ -55,11 +61,8 @@ def service_active(name: str) -> bool | None:
 
 def require_root(action: str) -> None:
     """Refuse mutating actions unless root; the test sandbox skips the check."""
-    import os
-    import sys
-
     if paths.is_sandboxed() or paths.is_target_root():
         return
     if os.geteuid() != 0:
-        print(f"kutu: {action} requires root (try: sudo kutu ...)", file=sys.stderr)
+        print(f"kutu-doctor: {action} requires root (try: sudo kutu-doctor ...)", file=sys.stderr)
         raise SystemExit(1)
